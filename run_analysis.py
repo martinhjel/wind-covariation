@@ -3,7 +3,17 @@ import pandas as pd
 import plotly.express as px
 
 
-from Wind.analyze import get_corr_figure, get_hours_shift_figure, get_mean_std_wind_figure, get_corr_distance_figure
+from Wind.analyze import (
+    get_corr_figure,
+    get_hours_shift_figure,
+    get_mean_std_wind_figure,
+    get_corr_distance_figure,
+    get_line_plot_with_mean,
+    get_histogram_2d_figure,
+    get_scatter_2d_figure,
+    get_scatter_with_kernel_density_2d_figure,
+    get_scatter_density_2d_figure
+)
 
 df_wind_locations = pd.read_csv("data/offshore_wind_locations.csv")
 df_nve_wind_locations = pd.read_csv("data/nve_offshore_wind_areas.csv", index_col=0)
@@ -37,7 +47,7 @@ fig = get_corr_distance_figure(df, df_locations)
 fig.show()
 
 
-#
+# Plot short-term variation
 n_shifts = 25
 quantile = 0.99
 
@@ -58,11 +68,53 @@ df["BE"].sort_values().plot()
 
 vals = df["BE"].values
 
-x=np.linspace(0,1,len(vals))
-px.line(
-    x=x,
-    y=np.sort(vals)
-)
+x = np.linspace(0, 1, len(vals))
+px.line(x=x, y=np.sort(vals))
 
 px.line(df["BE"].sample(10000).sort_values().values)
 
+
+### Line plots
+
+area = "BE"
+resample_period = "7D"
+fig = get_line_plot_with_mean(df, area, resample_period)
+fig.show()
+
+
+resample_period = "1H"
+fig = get_mean_std_wind_yearly_figure(df, resample_period)
+
+## Scatter plots
+df.columns
+area_a = "BE"  # "Utsira nord"
+area_b = "UK West"  # "Auvær"
+
+fig = get_scatter_2d_figure(df.sample(10000), area_a, area_b)
+fig.show()
+
+
+fig = get_histogram_2d_figure(df, area_a, area_b)
+fig.show()
+
+## Kernel density plots
+N = 50
+fig = get_scatter_with_kernel_density_2d_figure(
+    df, area_a, area_b, N, n_scatter_samples=500, bandwidth=0.1, rtol=0.01, kernel="epanechnikov"
+)
+fig.show()
+
+fig = get_scatter_with_kernel_density_2d_figure(
+    df, area_a, area_b, N, n_scatter_samples=500, bandwidth=0.1, rtol=0.01, kernel="gaussian"
+)
+fig.show()
+
+area_a = "Auvær"#"Utsira nord"
+area_b = "Sørlige Nordsjø II"
+fig = get_scatter_with_kernel_density_2d_figure(
+    df, area_a, area_b, N, n_scatter_samples=500, bandwidth=0.1, rtol=0.01, kernel="gaussian"
+)
+fig.show()
+
+# fig1 = get_scatter_density_2d_figure(df.sample(10000), area_a, area_b)
+# fig1.show()
