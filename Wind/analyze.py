@@ -20,7 +20,8 @@ def get_corr_figure(df):
         z=df_mask.to_numpy(),
         x=df_mask.columns.tolist(),
         y=df_mask.columns.tolist(),
-        colorscale=px.colors.diverging.RdBu,
+        # colorscale=px.colors.diverging.RdBu,
+        colorscale=px.colors.sequential.Blackbody_r,
         hoverinfo="none",  # Shows hoverinfo for null values
         showscale=True,
         ygap=1,
@@ -195,7 +196,16 @@ def get_corr_distance_figure(df, df_locations):
 
     fig = go.Figure(data=data)
 
-    fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False, template="plotly_white")
+    fig.update_layout(
+        xaxis_showgrid=False,
+        yaxis_showgrid=False,
+        template="plotly_white",
+        title=f"",
+        xaxis_title="distance [km]",
+        yaxis_title="correlation",
+        width=1000,
+        height=600,
+    )
 
     return fig
 
@@ -219,7 +229,7 @@ def get_line_plot_with_mean(df, area, resample_period):
         x="date",
         y=years,
         hover_data={"date": "|%d. %B, %H:%M"},
-        color_discrete_sequence=px.colors.sequential.Viridis,
+        color_discrete_sequence=px.colors.sequential.Blues,
     )
     fig.update_traces(opacity=0.3)
 
@@ -260,7 +270,7 @@ def get_line_plot_with_mean(df, area, resample_period):
         ),
     )
     fig.update_layout(
-        title=f"Area {area}, resample period {resample_period}",
+        title=f"Area: {area}, with resample period of {resample_period}",
         template="simple_white",
         xaxis_title="day",
         yaxis_title=" ",
@@ -377,7 +387,7 @@ def get_scatter_with_kernel_density_2d_figure(
             # reversescale=True,
             opacity=0.9,
             contours=go.contour.Contours(showlines=False),
-            colorbar=dict(lenmode='fraction', len=0.9, y=0.42)
+            colorbar=dict(lenmode="fraction", len=0.9, y=0.42),
         ),
         go.Scatter(
             x=dff[area_b],
@@ -386,13 +396,11 @@ def get_scatter_with_kernel_density_2d_figure(
             marker=dict(line_width=0, opacity=0.3, color="#778DA9", symbol="x"),
         ),
         go.Histogram(
-            x=df[area_b].values, name=f"x ", yaxis="y2", histnorm="probability density",
-            marker_color="rgb(200,200,200)"
+            x=df[area_b].values, name=f"x ", yaxis="y2", histnorm="probability density", marker_color="rgb(200,200,200)"
         ),
         go.Histogram(
-           y=df[area_a].values, name=f"y ", xaxis="x2", histnorm="probability density",
-           marker_color="rgb(200,200,200)"
-        )
+            y=df[area_a].values, name=f"y ", xaxis="x2", histnorm="probability density", marker_color="rgb(200,200,200)"
+        ),
     ]
 
     layout = go.Layout(
@@ -404,11 +412,11 @@ def get_scatter_with_kernel_density_2d_figure(
         height=650,
         xaxis=dict(domain=[0, 0.85], range=[0, 1], showgrid=False, nticks=7, title=area_b, zeroline=False),
         yaxis=dict(domain=[0, 0.85], range=[0, 1], showgrid=False, nticks=7, title=area_a),
-        margin=go.layout.Margin(l=40, r=40, b=85, t=100),        
+        margin=go.layout.Margin(l=20, r=20, b=20, t=20),
         xaxis2=dict(domain=[0.87, 1], showgrid=False, nticks=7, title=""),
         yaxis2=dict(domain=[0.87, 1], showgrid=False, nticks=7, title=""),
         # paper_bgcolor='rgb(233,233,233)',
-        plot_bgcolor='rgb(255,255,255)'
+        plot_bgcolor="rgb(255,255,255)",
     )
 
     return go.Figure(data=data, layout=layout)

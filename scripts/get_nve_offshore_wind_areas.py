@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import plotly.express as px
 from arcgis.gis import GIS
@@ -15,6 +16,7 @@ dc_df.head()
 dc_df["latlon"] = dc_df["SHAPE"].apply(lambda x: x.project_as(spatial_reference=SpatialReference(wkid=4326)))
 
 dc_df["latlon_centroid"] = dc_df["latlon"].apply(lambda x: x.centroid)
+dc_df.to_csv("data/havvind_nve.csv")
 
 ll_list = []
 for i in range(len(dc_df)):
