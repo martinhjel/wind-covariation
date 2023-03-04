@@ -1,3 +1,4 @@
+from pathlib import Path
 import pandas as pd
 import plotly.figure_factory as ff
 import plotly.express as px
@@ -6,9 +7,10 @@ import numpy as np
 from geopy.distance import geodesic
 from scipy.optimize import curve_fit
 from sklearn.neighbors import KernelDensity
+from Wind.plotly_template import my_template
+from Wind.load_data import DataLoaderFileShare, DataLoaderLocal
 
 pd.set_option("plotting.backend", "plotly")
-
 
 def get_corr_figure(df):
     corr = df.corr()
@@ -46,19 +48,39 @@ def get_corr_figure(df):
     return fig
 
 
-def get_hours_shift_figure(df, n_shifts, quantile):
-    df["Sum"] = df.mean(axis=1)
-    df_shift = pd.concat([df.diff(i).quantile(q=quantile) for i in range(n_shifts)], axis=1).T
+def get_hours_shift_figure(df, df_nve_wind_locations,n_shifts, quantile):
+    froya_lat = df_nve_wind_locations[df_nve_wind_locations["location"]=="Frøyabanken"]["lat"].values[0]
+
+    cols_south = df_nve_wind_locations[df_nve_wind_locations["lat"]<froya_lat]["location"].to_list()
+    cols_north = df_nve_wind_locations[df_nve_wind_locations["lat"]>=froya_lat]["location"].to_list()
+
+    df["All 15 wind farms"] = df.mean(axis=1)
+    df["Farms north of Stadt"] = df[cols_north].mean(axis=1)
+    df["Farms south of Stadt"] = df[cols_south].mean(axis=1)
+
+    df_t = df[["Utsira nord", "Sørlige Nordsjø I", "Nordmela", "Farms south of Stadt","Farms north of Stadt","All 15 wind farms"]]
+    df_shift = pd.concat([df_t.diff(i).quantile(q=quantile) for i in range(n_shifts)], axis=1).T
 
     df_shift.index = [i for i in range(n_shifts)]
 
     df_shift.index.name = "hour shift"
+    n_cols = len(df_shift.columns)
+    colormap = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c']
+    # colormap = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462']
+    # colormap = sns.color_palette("Set3", n_cols).as_hex()
+    colors = {col: color for col, color in zip(df_shift.columns, colormap)}
 
     fig = df_shift.plot(
-        title=f"quantile: {quantile}", template="simple_white", labels=dict(value="Absolute change in power output")
+        title=f"", template=my_template, labels=dict(value="Absolute change in power output"), color_discrete_map=colors
     )
 
-    df = df.drop(columns=["Sum"])
+    df = df.drop(columns=["All 15 wind farms", "Farms north of Stadt", "Farms south of Stadt"])
+
+    fig.update_layout(
+        legend_title="",
+        legend=dict(y = 0.95, x=0.30),
+        yaxis_range = [0,1]                
+    )
     return fig
 
 
@@ -85,7 +107,7 @@ def get_mean_std_wind_figure(df, resample_period):
             go.Scatter(x=x, y=y, name="Mean wind", line=dict(color="#3a4454"), mode="lines"),
         ]
     )
-    fig.update_layout(title=f"Period: {resample_period}", template="simple_white", xaxis_title="time", yaxis_title=" ")
+    fig.update_layout(title=f"Period: {resample_period}", template=my_template, xaxis_title="time", yaxis_title=" ")
 
     return fig
 
@@ -182,29 +204,32 @@ def get_corr_distance_figure(df, df_locations):
             x=df_corr_dist["Distance [km]"],
             y=df_corr_dist["Correlation"],
             text=df_corr_dist["Span"],
-            marker_color="#697771",
+            marker=dict(
+                color="Black",
+                size=5,
+                line=dict(width=0)
+            ),
             mode="markers",
-            name="Corelations",
+            name="Between two wind farms",
         ),
         go.Scatter(
             x=xn,
             y=func(xn, *popt),
-            marker_color="red",
-            name=f"{popt[0]:.2f} * exp(-1/({1/popt[1]:.1f}) * x) + {popt[2]:.2f}",
+            line=dict(
+                color="#5D8CC0",
+                width=3
+            ),
+            name=r"$1.05 \exp(\frac{-1}{490.4}x) + 0.02$",
         ),
     ]
 
     fig = go.Figure(data=data)
 
     fig.update_layout(
-        xaxis_showgrid=False,
-        yaxis_showgrid=False,
-        template="plotly_white",
+        template=my_template,
         title=f"",
-        xaxis_title="distance [km]",
-        yaxis_title="correlation",
-        width=1000,
-        height=600,
+        xaxis_title='Distance [km]',
+        yaxis_title='Correlation [-]'
     )
 
     return fig
@@ -229,9 +254,10 @@ def get_line_plot_with_mean(df, area, resample_period):
         x="date",
         y=years,
         hover_data={"date": "|%d. %B, %H:%M"},
-        color_discrete_sequence=px.colors.sequential.Blues,
+    #     color_discrete_sequence=px.colors.sequential.Blues,
+        color_discrete_sequence=sns.color_palette("mako",len(dff.columns)).as_hex()
     )
-    fig.update_traces(opacity=0.3)
+    fig.update_traces(opacity=0.5)
 
     x = list(dff["date"])
     y = dff.mean(axis=1).values
@@ -249,32 +275,38 @@ def get_line_plot_with_mean(df, area, resample_period):
                 line=dict(color="#A9B7C7"),
                 hoverinfo="skip",
                 showlegend=False,
+                name="std",
             ),
-            go.Scatter(x=x, y=y, name="Mean wind", line=dict(color="#3a4454"), mode="lines"),
+            go.Scatter(x=x, y=y, name="Mean", line=dict(color="#3a4454"), mode="lines"),
         ]
     )
 
     fig.update_xaxes(
         dtick="M1",
         tickformat="%j",
-        ticklabelmode="period",
-        rangeslider_visible=True,
-        rangeselector=dict(
-            buttons=list(
-                [
-                    dict(count=1, label="1m", step="month", stepmode="backward"),
-                    dict(count=6, label="6m", step="month", stepmode="backward"),
-                    dict(step="all"),
-                ]
-            )
-        ),
+        ticklabelmode="period"
     )
+
+    my_template.layout.legend = dict(yanchor=None, xanchor=None,# y = 0.95, x=1.2,
+                                bgcolor='rgba(255, 255, 255, 0.8)', bordercolor='black', borderwidth=1,
+                                    font=dict(size=12, family='Times New Roman'))
     fig.update_layout(
         title=f"Area: {area}, with resample period of {resample_period}",
-        template="simple_white",
-        xaxis_title="day",
-        yaxis_title=" ",
+        template=my_template,
+        xaxis_title="Day",
+        yaxis_title="Wind power output [-]",
     )
+
+    if resample_period == '1H':
+        viz_cols = ["Mean", "std"]
+    else:
+        viz_cols = ["Mean", "std", "2010", "2013"]
+
+    fig.update_traces(visible="legendonly", selector=lambda t: not t.name in viz_cols)
+
+    fig.update_xaxes(
+        dtick="M1",
+        tickformat="%b")
     return fig
 
 
@@ -318,7 +350,7 @@ def get_mean_std_wind_yearly_figure(df, resample_period):
     fig.update_xaxes(dtick="M1", tickformat="%j", ticklabelmode="period")
 
     fig.update_layout(
-        title=f"Resample period {resample_period}", template="simple_white", xaxis_title="day", yaxis_title=" "
+        title=f"Resample period {resample_period}", template=my_template, xaxis_title="day", yaxis_title=" "
     )
     return fig
 
@@ -327,7 +359,7 @@ def get_scatter_2d_figure(df, area_a, area_b):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df[area_a], y=df[area_b], mode="markers", marker=dict(line_width=1, opacity=0.3)))
     fig.update_layout(
-        title=f"", template="simple_white", xaxis_title=f"{area_a}", yaxis_title=f"{area_b}", width=600, height=600
+        title=f"", template=my_template, xaxis_title=f"{area_a}", yaxis_title=f"{area_b}", width=600, height=600
     )
     return fig
 
@@ -347,7 +379,7 @@ def get_histogram_2d_figure(df, area_a, area_b):
     )
     fig.update_layout(
         title=f"2D Histogram",
-        template="simple_white",
+        template=my_template,
         xaxis_title=f"{area_a}",
         yaxis_title=f"{area_b}",
         width=600,
@@ -365,8 +397,8 @@ def get_scatter_with_kernel_density_2d_figure(
     df, area_a, area_b, N, n_scatter_samples=500, bandwidth=0.1, rtol=0.01, kernel="epanechnikov"
 ):
 
-    x = np.linspace(-0.5, 1.5, N)
-    y = np.linspace(-0.5, 1.5, N)
+    x = np.linspace(0.0, 1.0, N)
+    y = np.linspace(0.0, 1.0, N)
     X, Y = np.meshgrid(x, y)
     positions = np.vstack([Y.ravel(), X.ravel()])
 
@@ -383,7 +415,9 @@ def get_scatter_with_kernel_density_2d_figure(
             z=Z,
             x=x,
             y=y,
-            colorscale="Viridis",
+            zmax=z_max,
+            zauto=False,
+            colorscale="Blues",
             # reversescale=True,
             opacity=0.9,
             contours=go.contour.Contours(showlines=False),
@@ -396,10 +430,10 @@ def get_scatter_with_kernel_density_2d_figure(
             marker=dict(line_width=0, opacity=0.3, color="#778DA9", symbol="x"),
         ),
         go.Histogram(
-            x=df[area_b].values, name=f"x ", yaxis="y2", histnorm="probability density", marker_color="rgb(200,200,200)"
+            x=df[area_b].values, name=f"x ", yaxis="y2", histnorm="probability density", marker_color="rgb(220,220,220)"
         ),
         go.Histogram(
-            y=df[area_a].values, name=f"y ", xaxis="x2", histnorm="probability density", marker_color="rgb(200,200,200)"
+            y=df[area_a].values, name=f"y ", xaxis="x2", histnorm="probability density", marker_color="rgb(220,220,220)"
         ),
     ]
 
@@ -413,8 +447,8 @@ def get_scatter_with_kernel_density_2d_figure(
         xaxis=dict(domain=[0, 0.85], range=[0, 1], showgrid=False, nticks=7, title=area_b, zeroline=False),
         yaxis=dict(domain=[0, 0.85], range=[0, 1], showgrid=False, nticks=7, title=area_a),
         margin=go.layout.Margin(l=20, r=20, b=20, t=20),
-        xaxis2=dict(domain=[0.87, 1], showgrid=False, nticks=7, title=""),
-        yaxis2=dict(domain=[0.87, 1], showgrid=False, nticks=7, title=""),
+        xaxis2=dict(domain=[0.87, 1], showgrid=False, nticks=7, title="", visible=False),
+        yaxis2=dict(domain=[0.87, 1], showgrid=False, nticks=7, title="", visible=False),
         # paper_bgcolor='rgb(233,233,233)',
         plot_bgcolor="rgb(255,255,255)",
     )

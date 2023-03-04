@@ -15,6 +15,7 @@ from Wind.analyze import (
     get_scatter_density_2d_figure,
 )
 
+### Load from local store
 df_wind_locations = pd.read_csv("data/offshore_wind_locations.csv")
 df_nve_wind_locations = pd.read_csv("data/nve_offshore_wind_areas.csv", index_col=0)
 df_nve_wind_locations = df_nve_wind_locations.sort_values(by="lat")  # Sort by south to north
@@ -22,6 +23,18 @@ df_nve_wind_locations = df_nve_wind_locations.sort_values(by="lat")  # Sort by s
 df_locations = pd.concat([df_wind_locations, df_nve_wind_locations], axis=0)
 df_locations = df_locations.reset_index(drop=True)
 df_locations = df_locations.sort_values(by="lat")  # Sort by south to north
+
+# Load data
+data = []
+for l in df_locations["location"].values:
+    data.append(pd.read_csv(f"data/{l}.csv", index_col=0, parse_dates=True))
+
+df = pd.concat(data, axis=1)
+df = df[df_locations["location"]]  # Sort by south to north
+
+
+##%%%% Load from file share
+
 
 # Plot locations on map
 fig = px.scatter_mapbox(
@@ -38,16 +51,7 @@ fig.update_layout(mapbox_style="open-street-map")
 fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
 fig.show(config=dict(editable=True))
 
-# Load data
-data = []
-for l in df_locations["location"].values:
-    data.append(pd.read_csv(f"data/{l}.csv", index_col=0, parse_dates=True))
 
-df = pd.concat(data, axis=1)
-df = df[df_locations["location"]]  # Sort by south to north
-
-df.info()
-df.describe()
 
 df_mean_wind_nve = df[df_nve_wind_locations["location"]].mean()
 df_mean_wind_nve.to_csv("data/mean_wind.csv")
