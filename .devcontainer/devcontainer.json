@@ -1,0 +1,63 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/miniconda
+{
+	"name": "Miniconda (Python 3)",
+	"build": { 
+		"context": "..",
+		"dockerfile": "Dockerfile"
+	},
+
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			// Set *default* container specific settings.json values on container create.
+			"settings": { 
+				"python.defaultInterpreterPath": "/opt/conda/bin/python",
+				"python.linting.enabled": true,
+				"python.linting.pylintEnabled": true,
+				"python.formatting.autopep8Path": "/opt/conda/bin/flake8",
+				"python.formatting.yapfPath": "/opt/conda/bin/flake8",
+				"python.linting.flake8Path": "/opt/conda/bin/flake8",
+				"python.linting.pycodestylePath": "/opt/conda/bin/pycodestyle",
+				"python.linting.pydocstylePath": "/opt/conda/bin/pydocstyle",
+				"python.linting.pylintPath": "/opt/conda/bin/pylint",
+				"python.testing.pytestPath": "/opt/conda/bin/pytest",
+				"terminal.integrated.defaultProfile.linux": "bash"				
+			},
+			
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"ms-python.python",
+				"ms-toolsai.vscode-ai",
+				"ms-azuretools.vscode-docker",
+				"ms-azuretools.vscode-azurestorage",
+				"ms-vscode.azure-account"
+			]
+		}
+	},
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {
+			"version": "latest"
+		},		
+		"ghcr.io/devcontainers/features/docker-in-docker": "latest",
+		"ghcr.io/devcontainers/features/azure-cli": "latest"
+	},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [8889],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "jupyter notebook --no-browser --port=8889 --ip=0.0.0.0 --NotebookApp.token=fraktal",
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "vscode",
+
+	"runArgs": ["--gpus", "all"]
+}
+
