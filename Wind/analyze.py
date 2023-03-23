@@ -12,6 +12,7 @@ from Wind.load_data import DataLoaderFileShare, DataLoaderLocal
 
 pd.set_option("plotting.backend", "plotly")
 
+
 def get_corr_figure(df):
     corr = df.corr()
 
@@ -48,24 +49,33 @@ def get_corr_figure(df):
     return fig
 
 
-def get_hours_shift_figure(df, df_nve_wind_locations,n_shifts, quantile):
-    froya_lat = df_nve_wind_locations[df_nve_wind_locations["location"]=="Frøyabanken"]["lat"].values[0]
+def get_hours_shift_figure(df, df_nve_wind_locations, n_shifts, quantile):
+    froya_lat = df_nve_wind_locations[df_nve_wind_locations["location"] == "Frøyabanken"]["lat"].values[0]
 
-    cols_south = df_nve_wind_locations[df_nve_wind_locations["lat"]<froya_lat]["location"].to_list()
-    cols_north = df_nve_wind_locations[df_nve_wind_locations["lat"]>=froya_lat]["location"].to_list()
+    cols_south = df_nve_wind_locations[df_nve_wind_locations["lat"] < froya_lat]["location"].to_list()
+    cols_north = df_nve_wind_locations[df_nve_wind_locations["lat"] >= froya_lat]["location"].to_list()
 
     df["All 15 wind farms"] = df.mean(axis=1)
     df["Farms north of Stadt"] = df[cols_north].mean(axis=1)
     df["Farms south of Stadt"] = df[cols_south].mean(axis=1)
 
-    df_t = df[["Utsira nord", "Sørlige Nordsjø I", "Nordmela", "Farms south of Stadt","Farms north of Stadt","All 15 wind farms"]]
+    df_t = df[
+        [
+            "Utsira nord",
+            "Sørlige Nordsjø I",
+            "Nordmela",
+            "Farms south of Stadt",
+            "Farms north of Stadt",
+            "All 15 wind farms",
+        ]
+    ]
     df_shift = pd.concat([df_t.diff(i).quantile(q=quantile) for i in range(n_shifts)], axis=1).T
 
     df_shift.index = [i for i in range(n_shifts)]
 
     df_shift.index.name = "hour shift"
     n_cols = len(df_shift.columns)
-    colormap = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c']
+    colormap = ["#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c"]
     # colormap = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462']
     # colormap = sns.color_palette("Set3", n_cols).as_hex()
     colors = {col: color for col, color in zip(df_shift.columns, colormap)}
@@ -76,11 +86,7 @@ def get_hours_shift_figure(df, df_nve_wind_locations,n_shifts, quantile):
 
     df = df.drop(columns=["All 15 wind farms", "Farms north of Stadt", "Farms south of Stadt"])
 
-    fig.update_layout(
-        legend_title="",
-        legend=dict(y = 0.95, x=0.30),
-        yaxis_range = [0,1]                
-    )
+    fig.update_layout(legend_title="", legend=dict(y=0.95, x=0.30), yaxis_range=[0, 1])
     return fig
 
 
@@ -147,7 +153,6 @@ def get_threshold_figure(df):
 
 
 def get_corr_distance_figure(df, df_locations):
-
     locs = []
     for _, row in df_locations.iterrows():
         locs.append((row["lat"], row["lon"]))
@@ -204,33 +209,21 @@ def get_corr_distance_figure(df, df_locations):
             x=df_corr_dist["Distance [km]"],
             y=df_corr_dist["Correlation"],
             text=df_corr_dist["Span"],
-            marker=dict(
-                color="Black",
-                size=5,
-                line=dict(width=0)
-            ),
+            marker=dict(color="Black", size=5, line=dict(width=0)),
             mode="markers",
             name="Between two wind farms",
         ),
         go.Scatter(
             x=xn,
             y=func(xn, *popt),
-            line=dict(
-                color="#5D8CC0",
-                width=3
-            ),
+            line=dict(color="#5D8CC0", width=3),
             name=r"$1.05 \exp(\frac{-1}{490.4}x) + 0.02$",
         ),
     ]
 
     fig = go.Figure(data=data)
 
-    fig.update_layout(
-        template=my_template,
-        title=f"",
-        xaxis_title='Distance [km]',
-        yaxis_title='Correlation [-]'
-    )
+    fig.update_layout(template=my_template, title=f"", xaxis_title="Distance [km]", yaxis_title="Correlation [-]")
 
     return fig
 
@@ -254,8 +247,8 @@ def get_line_plot_with_mean(df, area, resample_period):
         x="date",
         y=years,
         hover_data={"date": "|%d. %B, %H:%M"},
-    #     color_discrete_sequence=px.colors.sequential.Blues,
-        color_discrete_sequence=sns.color_palette("mako",len(dff.columns)).as_hex()
+        #     color_discrete_sequence=px.colors.sequential.Blues,
+        color_discrete_sequence=sns.color_palette("mako", len(dff.columns)).as_hex(),
     )
     fig.update_traces(opacity=0.5)
 
@@ -281,15 +274,16 @@ def get_line_plot_with_mean(df, area, resample_period):
         ]
     )
 
-    fig.update_xaxes(
-        dtick="M1",
-        tickformat="%j",
-        ticklabelmode="period"
-    )
+    fig.update_xaxes(dtick="M1", tickformat="%j", ticklabelmode="period")
 
-    my_template.layout.legend = dict(yanchor=None, xanchor=None,# y = 0.95, x=1.2,
-                                bgcolor='rgba(255, 255, 255, 0.8)', bordercolor='black', borderwidth=1,
-                                    font=dict(size=12, family='Times New Roman'))
+    my_template.layout.legend = dict(
+        yanchor=None,
+        xanchor=None,  # y = 0.95, x=1.2,
+        bgcolor="rgba(255, 255, 255, 0.8)",
+        bordercolor="black",
+        borderwidth=1,
+        font=dict(size=12, family="Times New Roman"),
+    )
     fig.update_layout(
         title=f"Area: {area}, with resample period of {resample_period}",
         template=my_template,
@@ -297,16 +291,14 @@ def get_line_plot_with_mean(df, area, resample_period):
         yaxis_title="Wind power output [-]",
     )
 
-    if resample_period == '1H':
+    if resample_period == "1H":
         viz_cols = ["Mean", "std"]
     else:
         viz_cols = ["Mean", "std", "2010", "2013"]
 
     fig.update_traces(visible="legendonly", selector=lambda t: not t.name in viz_cols)
 
-    fig.update_xaxes(
-        dtick="M1",
-        tickformat="%b")
+    fig.update_xaxes(dtick="M1", tickformat="%b")
     return fig
 
 
@@ -396,7 +388,6 @@ def get_scatter_density_2d_figure(df, area_a, area_b):
 def get_scatter_with_kernel_density_2d_figure(
     df, area_a, area_b, N, n_scatter_samples=500, bandwidth=0.1, rtol=0.01, kernel="epanechnikov"
 ):
-
     x = np.linspace(0.0, 1.0, N)
     y = np.linspace(0.0, 1.0, N)
     X, Y = np.meshgrid(x, y)

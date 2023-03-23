@@ -13,3 +13,4 @@ scipy
 scikit-learn
 kaleido
 seaborn
+black

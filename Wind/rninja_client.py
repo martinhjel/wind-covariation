@@ -46,7 +46,6 @@ class NinjaClient:
         return df, metadata
 
     def _query(self, uri, args):
-
         self.wait_for_burst()
         res = requests.get(uri, params=args, headers=self.headers)
 
@@ -77,7 +76,7 @@ class NinjaClient:
 
     def _get_periods(self, date_from: str, date_to: str):
         """
-        
+
         Chunks date period if it is larger than 1 year.
         """
 

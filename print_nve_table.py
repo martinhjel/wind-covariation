@@ -45,7 +45,7 @@ print(
         hrules=True,
         label="tab:overview-offshore-wind",
         # escape=False,
-        column_format="|"+"|".join(["l" for _ in df_latex.columns])+"|",
+        column_format="|" + "|".join(["l" for _ in df_latex.columns]) + "|",
         caption="Overview of all the geographical areas pointed out as offshore wind power areas by the Norwegian coast.",
     )
 )
