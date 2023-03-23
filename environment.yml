@@ -1,0 +1,22 @@
+name: wind
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+dependencies:
+  - requests
+  - pandas
+  - numpy
+  - plotly
+  - matplotlib
+  - ipykernel
+  - autopep8
+  - pytorch
+  - jupyter
+  - azure-storage-file-share
+  - geopy
+  - scipy
+  - scikit-learn
+  - python-kaleido
+  - seaborn
+  - black

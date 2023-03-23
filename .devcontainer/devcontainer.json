@@ -28,8 +28,7 @@
 			
 			// Add the IDs of extensions you want installed when the container is created.
 			"extensions": [
-				"ms-python.python",
-				"ms-toolsai.vscode-ai",
+				"ms-python.python",				
 				"ms-azuretools.vscode-docker",
 				"ms-azuretools.vscode-azurestorage",
 				"ms-vscode.azure-account"
@@ -50,7 +49,7 @@
 	"forwardPorts": [8889],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "jupyter notebook --no-browser --port=8889 --ip=0.0.0.0 --NotebookApp.token=fraktal",
+	// "postCreateCommand": "jupyter notebook --no-browser --port=8889 --ip=0.0.0.0 --NotebookApp.token=fraktal",
 
 	// Configure tool-specific properties.
 	// "customizations": {},
