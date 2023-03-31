@@ -13,7 +13,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
     # Add sudo support. Omit if you don't need to install software after connecting.
     && apt-get update \
-    && apt-get install -y sudo \    
+    && apt-get install -y sudo openssh-client \    
     && DEBIAN_FRONTEND=noninteractive \    
     && apt-get dist-upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends apt-utils \    
