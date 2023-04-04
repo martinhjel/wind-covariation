@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 from configparser import ConfigParser
 from Wind.rninja_client import NinjaClient
-from shapely.geometry import Point
+
 
 config = ConfigParser()
 config.read("config.ini")
