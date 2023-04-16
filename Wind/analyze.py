@@ -253,7 +253,8 @@ def get_line_plot_with_mean(df, area, resample_period):
     )
     fig.update_traces(opacity=0.5)
 
-    x = list(dff["date"])
+    dff = dff.set_index("date")
+    x = list(dff.index)
     y = dff.mean(axis=1).values
 
     y_upper = y + dff.std(axis=1).values
@@ -387,7 +388,15 @@ def get_scatter_density_2d_figure(df, area_a, area_b):
 
 
 def get_scatter_with_kernel_density_2d_figure(
-    df, area_a, area_b, N, n_scatter_samples=500, bandwidth=0.1, rtol=0.01, kernel="epanechnikov"
+    df,
+    area_a,
+    area_b,
+    N,
+    z_max,
+    n_scatter_samples=500,
+    bandwidth=0.1,
+    rtol=0.01,
+    kernel="epanechnikov",
 ):
     x = np.linspace(0.0, 1.0, N)
     y = np.linspace(0.0, 1.0, N)
