@@ -8,6 +8,7 @@ from geopy.distance import geodesic
 from scipy.optimize import curve_fit
 from sklearn.neighbors import KernelDensity
 from Wind.plotly_template import my_template
+import seaborn as sns
 
 
 pd.set_option("plotting.backend", "plotly")

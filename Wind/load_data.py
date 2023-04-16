@@ -6,6 +6,7 @@ from io import StringIO
 from azure.storage.fileshare import ShareServiceClient, ShareDirectoryClient
 from configparser import RawConfigParser
 import pandas as pd
+import numpy as np
 
 
 class DataLoader:
@@ -57,11 +58,11 @@ class DataLoader:
         file_client = dir_client.get_file_client("nve_offshore_wind_areas.csv")
         df_nve_wind_locations = pd.read_csv(StringIO(file_client.download_file().content_as_text()))
 
-        df_nve_wind_locations = df_nve_wind_locations.sort_values(by="lat")  # Sort by south to north
+        df_nve_wind_locations = df_nve_wind_locations.sort_values(by="lat", ascending=False)  # Sort by north to south
 
         df_locations = pd.concat([df_wind_locations, df_nve_wind_locations], axis=0)
         df_locations = df_locations.reset_index(drop=True)
-        df_locations = df_locations.sort_values(by="lat")  # Sort by south to north
+        df_locations = df_locations.sort_values(by="lat", ascending=False)  # Sort by north to south
 
         # Load data
         data = []
@@ -82,11 +83,11 @@ class DataLoader:
     def _load_locally(self, data_folder_path: Path):
         df_wind_locations = pd.read_csv(data_folder_path / "offshore_wind_locations.csv")
         df_nve_wind_locations = pd.read_csv(data_folder_path / "nve_offshore_wind_areas.csv", index_col=0)
-        df_nve_wind_locations = df_nve_wind_locations.sort_values(by="lat")  # Sort by south to north
+        df_nve_wind_locations = df_nve_wind_locations.sort_values(by="lat", ascending=False)  # Sort by north to south
 
         df_locations = pd.concat([df_wind_locations, df_nve_wind_locations], axis=0)
         df_locations = df_locations.reset_index(drop=True)
-        df_locations = df_locations.sort_values(by="lat")  # Sort by south to north
+        df_locations = df_locations.sort_values(by="lat", ascending=False)  # Sort by north to south
 
         # Load data
         data = []
@@ -99,3 +100,21 @@ class DataLoader:
         self.df = df
         self.df_locations = df_locations
         self.df_nve_wind_locations = df_nve_wind_locations
+
+
+def get_test_dataset(N=1000):
+    """Generate test dataset
+
+    Args:
+        N (int, optional): data points. Defaults to 1000.
+
+    Returns:
+        _type_: _description_
+    """
+    s = np.linspace(0, 10, N, dtype=np.float32)
+    y1 = np.sin(s)
+    y2 = np.cos(s)
+
+    Y = np.stack((y1, y2), axis=-1).T
+
+    return Y

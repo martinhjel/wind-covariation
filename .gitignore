@@ -131,3 +131,8 @@ config.ini
 .devcontainer/noop.txt
 
 logs/
+data/
+.snakemake/
+report.html
+.DS_Store
+dag.png

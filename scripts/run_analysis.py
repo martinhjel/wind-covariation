@@ -1,8 +1,13 @@
+import os
+import sys
+import argparse
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 
-
+sys.path.insert(1, os.path.join(sys.path[0], ".."))
 from Wind.analyze import (
     get_corr_figure,
     get_hours_shift_figure,
@@ -15,26 +20,29 @@ from Wind.analyze import (
     get_scatter_density_2d_figure,
 )
 
-### Load from local store
-df_wind_locations = pd.read_csv("data/offshore_wind_locations.csv")
-df_nve_wind_locations = pd.read_csv("data/nve_offshore_wind_areas.csv", index_col=0)
+
+# Define command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("--input-locations", type=str, required=True, help="")
+parser.add_argument("--input-nve-locations", type=str, required=True, help="")
+parser.add_argument("--wind-data", required=True, help="")
+args = parser.parse_args()
+
+wind_locations_file = Path(args.input_locations)
+wind_nve_locations_file = Path(args.input_nve_locations)
+wind_data_file = Path(args.wind_data)
+
+### Read data
+df_wind_locations = pd.read_csv(wind_locations_file)
+df_nve_wind_locations = pd.read_csv(wind_nve_locations_file, index_col=0)
 df_nve_wind_locations = df_nve_wind_locations.sort_values(by="lat")  # Sort by south to north
 
 df_locations = pd.concat([df_wind_locations, df_nve_wind_locations], axis=0)
 df_locations = df_locations.reset_index(drop=True)
 df_locations = df_locations.sort_values(by="lat")  # Sort by south to north
 
-# Load data
-data = []
-for l in df_locations["location"].values:
-    data.append(pd.read_csv(f"data/{l}.csv", index_col=0, parse_dates=True))
-
-df = pd.concat(data, axis=1)
-df = df[df_locations["location"]]  # Sort by south to north
-
-
-##%%%% Load from file share
-
+df = pd.read_csv(wind_data_file, index_col=0)
+df.index = pd.to_datetime(df.index)
 
 # Plot locations on map
 fig = px.scatter_mapbox(
@@ -53,7 +61,7 @@ fig.show(config=dict(editable=True))
 
 
 df_mean_wind_nve = df[df_nve_wind_locations["location"]].mean()
-df_mean_wind_nve.to_csv("data/mean_wind.csv")
+# df_mean_wind_nve.to_csv("data/mean_wind.csv")
 fig = px.bar(df_mean_wind_nve, text_auto=".2", title="")
 fig.update_traces(textfont_size=12, textangle=0, textposition="inside", cliponaxis=False)
 fig.update_layout(
@@ -73,11 +81,11 @@ fig.show()
 n_shifts = 25
 quantile = 0.8
 
-fig = get_hours_shift_figure(df, n_shifts, quantile)
+fig = get_hours_shift_figure(df, df_nve_wind_locations, n_shifts, quantile)
 fig.update_layout(width=900)
 fig.show()
 
-fig = get_hours_shift_figure(df, n_shifts, quantile=0.9999)
+fig = get_hours_shift_figure(df, df_nve_wind_locations, n_shifts, quantile=0.9999)
 fig.update_layout(width=900)
 fig.show()
 
@@ -113,8 +121,8 @@ fig = get_line_plot_with_mean(df, area, resample_period)
 fig.show()
 
 
-resample_period = "1H"
-fig = get_mean_std_wind_yearly_figure(df, resample_period)
+# resample_period = "1H"
+# fig = get_mean_std_wind_yearly_figure(df, resample_period)
 
 ## Scatter plots
 df.columns
