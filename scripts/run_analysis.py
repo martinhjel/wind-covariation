@@ -79,7 +79,7 @@ fig.show()
 
 # Plot short-term variation
 n_shifts = 25
-quantile = 0.8
+quantile = 0.9
 
 fig = get_hours_shift_figure(df, df_nve_wind_locations, n_shifts, quantile)
 fig.update_layout(width=900)

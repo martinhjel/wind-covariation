@@ -14,7 +14,7 @@ import seaborn as sns
 pd.set_option("plotting.backend", "plotly")
 
 
-def get_corr_figure(df):
+def get_corr_figure(df, scale_size=1.0):
     corr = df.corr()
 
     mask = np.triu(np.ones_like(corr, dtype=bool))
@@ -24,13 +24,14 @@ def get_corr_figure(df):
         z=df_mask.to_numpy(),
         x=df_mask.columns.tolist(),
         y=df_mask.columns.tolist(),
+        colorscale=px.colors.sequential.matter,
         # colorscale=px.colors.diverging.RdBu,
-        colorscale=px.colors.sequential.Blackbody_r,
+        # colorscale=px.colors.sequential.Blackbody_r,
         hoverinfo="none",  # Shows hoverinfo for null values
         showscale=True,
         ygap=1,
         xgap=1,
-        zmid=0,
+        # zmid=0,
     )
 
     fig.update_xaxes(side="bottom")
@@ -38,8 +39,8 @@ def get_corr_figure(df):
     fig.update_layout(
         #     title_text='Heatmap',
         #     title_x=0.5,
-        #     width=1000,
-        height=1000,
+        width=1200 * scale_size,
+        height=1000 * scale_size,
         xaxis_showgrid=False,
         yaxis_showgrid=False,
         xaxis_zeroline=False,
@@ -153,7 +154,7 @@ def get_threshold_figure(df):
     fig.show()
 
 
-def get_corr_distance_figure(df, df_locations):
+def get_corr_distance_df(df, df_locations, resolution="1H"):
     locs = []
     for _, row in df_locations.iterrows():
         locs.append((row["lat"], row["lon"]))
@@ -164,7 +165,7 @@ def get_corr_distance_figure(df, df_locations):
         for j in locs:
             distances[-1].append(geodesic(i, j).km)
 
-    df_corr = df.corr()
+    df_corr = df.resample(resolution).mean().corr()
     mask = np.triu(np.ones_like(df_corr, dtype=bool))
     df_corr = df_corr.mask(mask).round(2)
 
@@ -195,6 +196,10 @@ def get_corr_distance_figure(df, df_locations):
     df_corr_dist = df_corr_dist.reset_index()
     df_corr_dist = df_corr_dist.rename(columns={0: "Span"})
 
+    return df_corr_dist
+
+
+def get_exponential_function(df_corr_dist):
     # Fit an exponential function
     def func(x, a, b, c):
         return a * np.exp(-b * x) + c
@@ -204,7 +209,41 @@ def get_corr_distance_figure(df, df_locations):
     )
 
     xn = np.linspace(df_corr_dist["Distance [km]"].min(), df_corr_dist["Distance [km]"].max(), 2500)
+    return xn, func(xn, *popt), popt
 
+
+def get_multiple_corr_distance_figure(df, df_locations, resolutions, colors):
+    data = []
+    for i, res in enumerate(resolutions):
+        df_corr_dist = get_corr_distance_df(df, df_locations, resolution=res)
+        data.append(
+            go.Scatter(
+                x=df_corr_dist["Distance [km]"],
+                y=df_corr_dist["Correlation"],
+                text=df_corr_dist["Span"],
+                marker=dict(color=colors[i], size=5, line=dict(width=0)),
+                mode="markers",
+                name=f"Between two wind farms - {res}",
+            )
+        )
+        xn, yn, popt = get_exponential_function(df_corr_dist)
+        data.append(
+            go.Scatter(
+                x=xn,
+                y=yn,
+                line=dict(color=colors[i], width=3),
+                name=f"Exponential fit with {res} resolution",  # r"$1.05 \exp(\frac{-1}{490.4}x) + 0.02$",
+            )
+        )
+
+    fig = go.Figure(data=data)
+    fig.update_layout(template=my_template, title=f"", xaxis_title="Distance [km]", yaxis_title="Correlation [-]")
+    return fig
+
+
+def get_corr_distance_figure(df, df_locations, resolution="1H"):
+    df_corr_dist = get_corr_distance_df(df, df_locations, resolution)
+    xn, yn, popt = get_exponential_function(df_corr_dist)
     data = [
         go.Scatter(
             x=df_corr_dist["Distance [km]"],
@@ -216,9 +255,9 @@ def get_corr_distance_figure(df, df_locations):
         ),
         go.Scatter(
             x=xn,
-            y=func(xn, *popt),
+            y=yn,
             line=dict(color="#5D8CC0", width=3),
-            name=r"$1.05 \exp(\frac{-1}{490.4}x) + 0.02$",
+            name=f"Exponential fit with {resolution} resolution",  # r"$1.05 \exp(\frac{-1}{490.4}x) + 0.02$",
         ),
     ]
 
@@ -293,10 +332,7 @@ def get_line_plot_with_mean(df, area, resample_period):
         yaxis_title="Wind power output [-]",
     )
 
-    if resample_period == "1H":
-        viz_cols = ["Mean", "std"]
-    else:
-        viz_cols = ["Mean", "std", "2010", "2013"]
+    viz_cols = ["Mean", "std"]
 
     fig.update_traces(visible="legendonly", selector=lambda t: not t.name in viz_cols)
 

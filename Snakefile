@@ -1,4 +1,5 @@
 # pylint: skip-file
+from glob import glob
 
 # --- Configurations and settings --- #
 alpha_list = [0.5, 0.3, 0.1, 0.0]
@@ -10,7 +11,7 @@ rule all:
     input:
         "data/processed/augmented_lagrangian/latex_table.txt",
         "data/processed/wind_data.csv",
-        "images/my_image.pdf"
+        "images/corr-distance.pdf",
 
 # --- ETL rules ---
 
@@ -36,12 +37,24 @@ rule run_analysis_notebook:
     input:
         locations = "data/offshore_wind_locations.csv",
         nve_locations = "data/nve_offshore_wind_areas.csv",
-        combined = "data/processed/wind_data.csv"
+        combined = "data/processed/wind_data.csv",
+        models = expand("data/processed/augmented_lagrangian/alp_{alpha}/model.pkl", alpha=alpha_list)
     output:
-        "images/my_image.pdf"
+        "images/corr-distance.pdf",
+        "images/shift-quantile0.9.pdf",
+        "images/shift-quantile0.9999.pdf",
+        "images/utsira-nord-std-wind-7D.pdf",
+        "images/utsira-nord-std-wind-1H.pdf",
+        "images/scatter-soerlige-nordsjoe-ii-nordmela.pdf",
+        "images/scatter-soerlige-nordsjoe-ii-de-west.pdf",
+        "images/corr-matrix-1day.pdf",
+        "images/corr-matrix-1day-aggregated.pdf",
+        "images/changes-wind-output-sorelige-nordsjoe-ii.pdf",
+        "images/weights_training_0.3_alpha.pdf"
+    log:
+        "logs/run_analysis_notebook.log"
     notebook:
         "notebooks/Analyze.py.ipynb"
-
 
 # ---- Augmented Lagrangian rules ---
 rule run_augmented_lagrangian:
