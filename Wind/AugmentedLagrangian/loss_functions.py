@@ -1,18 +1,18 @@
 import torch
 
 
-def loss_var(x, Y):
-    y = torch.matmul(x, Y)
+def loss_var(x, Y, bias):
+    y = torch.matmul(x, Y) + bias
     return y.var()
 
 
-def loss_mean_var(x, Y, alp):
-    y = torch.matmul(x, Y)
+def loss_mean_var(x, Y, alp, bias):
+    y = torch.matmul(x, Y) + bias
     return -alp * y.mean() + (1 - alp) * y.var()
 
 
-def loss_mean_cov(x, Y, alp):
-    y = x[:, None] * Y
+def loss_mean_cov(x, Y, alp, bias):
+    y = x[:, None] * Y + bias
     cov_matrix = y.cov()
     return -alp * y.sum(axis=0).mean() + (1 - alp) * torch.triu(cov_matrix, diagonal=1).sum()
 

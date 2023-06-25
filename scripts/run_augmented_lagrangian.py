@@ -3,35 +3,47 @@ import sys
 import argparse
 import pickle
 from pathlib import Path
+import time
+import logging
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
+import numpy as np
+from _helpers import configure_logging
 
-sys.path.insert(1, os.path.join(sys.path[0], ".."))
-from Wind.load_data import DataLoader
-from Wind.AugmentedLagrangian.loss_functions import loss_var, loss_mean_var
+sys.path.insert(1, "/Users/martihj/gitsource/wind-covariation") # Absolute path due to issues with snakemake
 from Wind.AugmentedLagrangian.augmented_lagrangian import Hyperparameters, AugmentedLagrangian
+from Wind.AugmentedLagrangian.loss_functions import loss_mean_var
+from Wind.load_data import DataLoader
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
-def main():
+if __name__ == "__main__":
+    if "snakemake" not in globals():
+        from _helpers import mock_snakemake
+
+        snakemake = mock_snakemake("run_augmented_lagrangian", area="norwegian", bias="bias_false", alpha=0.0)
+
+    configure_logging(snakemake)
+    logger.info("Started augmented lagrangian script.")
+
     device = "cpu"
 
-    # Define command line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data-folder", required=True, help="")
-    parser.add_argument("--models-output", required=True, help="")
-    parser.add_argument("--alpha", required=True, help="")
-    args = parser.parse_args()
-
-    # Use Wind dataset
-    data_folder = Path(args.data_folder)
+    data_folder = Path(snakemake.input.data_folder )
     data_loader = DataLoader(data_folder_path=data_folder)
+    
+    alpha = float(snakemake.params.alpha)
+    area = snakemake.params.area
+    bias = snakemake.params.bias
+    output_path = snakemake.output.model
+
+    logger.info(f"{area}, {bias}, {alpha}")
 
     norwegian_areas = data_loader.df_nve_wind_locations["location"].to_list()
     all_areas = data_loader.df_locations["location"].to_list()
-
-    alpha = float(args.alpha)
 
     loss_fn_str = f"-{alpha}*Mean+{1-alpha}*Var"
 
@@ -47,16 +59,32 @@ def main():
         }
     )
 
+    df = data_loader.df
+ 
+    area_map = {
+        "all": all_areas,
+        "norwegian": norwegian_areas
+    }
+
+    use_bias = True if bias == "bias_true" else False
+
+    trainable_cols = df.columns.isin(area_map[area])
+    
     writer = SummaryWriter(log_dir=f"logs/{loss_fn_str}/{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}")
     model = AugmentedLagrangian(
-        df=data_loader.df, hyperparameters=hparams, loss_fn=loss_mean_var, writer=writer, alpha=alpha, device=device
+        df=df,
+        trainable_cols=trainable_cols,
+        use_bias = use_bias,
+        hyperparameters=hparams,
+        loss_fn=loss_mean_var,
+        writer=writer,
+        alpha=alpha,
+        device=device,
+        logger=logger,
     )
     model.train()
 
-    models_output_file = Path(args.models_output)
-    with open(models_output_file, "wb") as f:
+    out_path = Path(output_path)
+    
+    with open(output_path, "wb") as f:
         pickle.dump(model, f)
-
-
-if __name__ == "__main__":
-    main()

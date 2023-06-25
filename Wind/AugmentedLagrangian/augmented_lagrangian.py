@@ -1,4 +1,5 @@
-from typing import Callable, Optional
+import logging
+from typing import Callable, Optional, List
 from tensorboard.backend.event_processing import event_accumulator
 from Wind.load_data import DataLoader
 import numpy as np
@@ -33,28 +34,51 @@ class AugmentedLagrangian(BaseEstimator):
     def __init__(
         self,
         df: pd.DataFrame,
+        trainable_cols: List[str],
+        use_bias: bool,
         hyperparameters: Hyperparameters,
         loss_fn: Callable,
         writer: SummaryWriter,
         alpha: float,
         device: str = "cpu",
+        logger: Optional[logging.Logger] = None
     ):
+        self.logger = logger or logging.getLogger("__name__")
         self.hparams = hyperparameters
         self.device = device
         self.writer = writer
         self.df = df
 
-        self.Y = torch.from_numpy(df.values.T).to(dtype=torch.float32, device=device)
+        self.df_trainable = df.loc[:,trainable_cols]
+        self.df_not_trainable = df.loc[:,~trainable_cols]
+
+        bias = np.zeros(len(self.df_trainable))
+        n_not_trainable = (~trainable_cols).sum()
+        if n_not_trainable > 0 and use_bias:
+            weighting = n_not_trainable/len(df.columns)
+            bias = self.df_not_trainable.mean(axis=1).values*weighting # Weight so that sum is still 1
+            self.logger.info(f"{n_not_trainable} not trainable weights.")
+            
+        self.bias = torch.from_numpy(bias).to(dtype=torch.float32,device=device)
+        self.logger.info(f"{bias.mean()} mean bias.")
+
+        if use_bias: 
+            self.sum_weight = len(self.df_trainable.columns)/len(df.columns)
+        else:
+            self.sum_weight = 1.0
+        self.sum_weight = torch.tensor(self.sum_weight, dtype=torch.float32, device=device)
+
+        self.Y = torch.from_numpy(self.df_trainable.values.T).to(dtype=torch.float32, device=device)
         self.alpha = alpha
         self.loss_fn_ = loss_fn
 
         # Initialize x evenly
-        self.n_weights = df.values.T.shape[0]
-        x = np.ones(self.n_weights, dtype=np.float32)
+        self.n_weights = self.df_trainable.values.T.shape[0]
+        x = np.ones(self.n_weights, dtype=np.float32, )
         x = x / x.sum(axis=-1)
         x = torch.from_numpy(x)
         x.requires_grad = True
-        self.x = x.to(self.device)
+        self.x = x.to(self.device) * self.sum_weight # Scale so all weights sum to 1 initially
 
         # Langrange multipliers
         self.lmbda = torch.tensor(self.hparams.init_lmbda, requires_grad=True, device=self.device)
@@ -80,7 +104,7 @@ class AugmentedLagrangian(BaseEstimator):
         self.mus = torch.cat((mus, self.mu.detach().view(1, -1)))
 
     def loss_fn(self, x):
-        return self.loss_fn_(x, self.Y, alp=self.alpha)
+        return self.loss_fn_(x, self.Y, alp=self.alpha, bias=self.bias)
 
     def _update_penalty(self):
         with torch.no_grad():
@@ -94,7 +118,7 @@ class AugmentedLagrangian(BaseEstimator):
 
     def _update_multipliers(self):
         with torch.no_grad():
-            self.lmbda = self.lmbda + self.rho * (self.x.sum() - 1)
+            self.lmbda = self.lmbda + self.rho * (self.x.sum() - self.sum_weight)
             self.mu = torch.maximum(torch.zeros_like(self.x), self.mu + self.rho * (-self.x))
 
     def _are_kkt_conditions_verified(self, atol=1e-4):
@@ -102,7 +126,7 @@ class AugmentedLagrangian(BaseEstimator):
         dx = torch.autograd.grad(lf(self.x, self.lmbda, self.mu, self.loss_fn), self.x)[0]
         if torch.isclose(dx, torch.zeros_like(dx), atol=atol).all():
             # c(x) = 0 | x.sum()-1 = 0
-            if torch.isclose((self.x.sum() - 1), torch.tensor(0.0, dtype=torch.float32), atol=atol):
+            if torch.isclose((self.x.sum() - self.sum_weight), torch.tensor(0.0, dtype=torch.float32), atol=atol):
                 # h(x) <= 0 | (-x) <= 0
                 if ((-self.x) <= 0.0).all():
                     # mu >= 0

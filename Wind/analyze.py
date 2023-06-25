@@ -1,3 +1,4 @@
+import logging 
 from pathlib import Path
 import pandas as pd
 import plotly.figure_factory as ff
@@ -10,6 +11,8 @@ from sklearn.neighbors import KernelDensity
 from Wind.plotly_template import my_template
 import seaborn as sns
 
+logger = logging.getLogger("__name__")
+logger.setLevel(logging.INFO)
 
 pd.set_option("plotting.backend", "plotly")
 
@@ -235,6 +238,8 @@ def get_multiple_corr_distance_figure(df, df_locations, resolutions, colors):
                 name=f"Exponential fit with {res} resolution",  # r"$1.05 \exp(\frac{-1}{490.4}x) + 0.02$",
             )
         )
+
+        logger.info(f"Fitted function, {res} resolution, {colors[i]} color, {popt} popt -> (a,b,c) y=a*e^(-b*x)+c")
 
     fig = go.Figure(data=data)
     fig.update_layout(template=my_template, title=f"", xaxis_title="Distance [km]", yaxis_title="Correlation [-]")
